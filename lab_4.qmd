@@ -1,0 +1,140 @@
+---
+title: "Lab 4"
+author: "Matteo Boyer"
+format: html
+execute:
+  echo: false
+  warning: false
+  keep-md: true
+---
+
+```{r}
+here::i_am("r-101-grade-analysis.Rproj")
+library(here)
+library(vroom)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+### Question 1
+```{r}
+grades <- vroom(here("grades.csv"))
+```
+
+
+### Question 2
+
+```{r}
+
+stat <- grades |>
+  summarise("Minimun" = min(Exam,na.rm = TRUE), "Maximum" = max(Exam, na.rm = TRUE), "Mean" = mean(Exam, na.rm = TRUE), "Median" = median(Exam, na.rm = TRUE))
+
+knitr::kable(stat, align = "cccc", digits = 2, caption = "Exam statistics")
+```
+
+### Question 3
+
+```{r}
+
+na <- sum(is.na(grades$Exam))
+
+```
+
+`r na` students did not take the exam.
+
+### Question 4
+
+
+
+```{r}
+
+ggplot(grades, aes(x=Exam)) + geom_histogram(bins = 20, na.rm = TRUE) + labs(y = "Number of students", title = "Distribution of the exam grades")
+
+```
+### Question 5
+
+For question 5 and 6 we keep the students that did not take the test as they are part of groups.
+
+```{r}
+
+nb_group <- grades |>
+  group_by(Group) |>
+  summarise("Number of students" = n())
+
+knitr::kable(nb_group, align = "c", digits = 0)
+
+
+
+```
+
+### Question 6
+
+```{r}
+
+ggplot(nb_group, aes(y=`Number of students`, x = Group )) + geom_col() + theme(axis.text.x = element_text(angle=90))
+
+```
+
+### Question 7
+
+```{r}
+
+exam <- grades |>
+  group_by(Group) |>
+  select(Exam)
+
+ggplot(exam, aes(y=Exam, x = Group )) + geom_violin()  + theme(axis.text.x = element_text(angle=90)) + labs(y = "Exam grades", title = "Distribution of the exam grades by group")
+
+ggplot(exam, aes(y=Exam, x = Group )) + geom_boxplot()  + theme(axis.text.x = element_text(angle=90)) + labs(y = "Exam grades", title = "Distribution of the exam grades by group")
+
+```
+
+### Question 8
+
+```{r}
+
+miss <- grades %>%
+  group_by(Group) %>%
+  summarize(Students_Missed_Exam = sum(is.na(Exam)))
+
+```
+### Question 9
+
+```{r}
+
+ggplot(miss, aes(y=`Students_Missed_Exam`, x = Group )) + geom_col() + theme(axis.text.x = element_text(angle=90))+ labs(y = "Number of students who missed the exam", title = "Number of students who missed the exam by group")
+
+```
+### Question 10
+
+```{r}
+
+grades_long <- grades %>%
+  pivot_longer(cols = -c(Id, Group), names_to = "type_exam", values_to = "Score")
+
+```
+
+### Question 11
+
+```{r}
+grades_NA <- grades_long %>%
+  group_by(Id) %>%
+  summarize(NA_total = sum(is.na(Score)))
+
+```
+
+### Question 12
+
+```{r}
+ggplot(grades_NA, aes(x = NA_total)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(
+    title = "Distribution of missing grades per student",
+    x = "Total Missing Grades",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+```
+
