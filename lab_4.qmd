@@ -15,6 +15,7 @@ library(vroom)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(stringr)
 ```
 
 ### Question 1
@@ -49,7 +50,7 @@ na <- sum(is.na(grades$Exam))
 
 ```{r}
 
-ggplot(grades, aes(x=Exam)) + geom_histogram(bins = 20, na.rm = TRUE) + labs(y = "Number of students", title = "Distribution of the exam grades")
+ggplot(grades, aes(x=Exam)) + geom_histogram(binwidth = 1, na.rm = TRUE, fill = "white", color = "black") + labs(y = "Number of students", title = "Distribution of the exam grades")
 
 ```
 ### Question 5
@@ -72,7 +73,7 @@ knitr::kable(nb_group, align = "c", digits = 0)
 
 ```{r}
 
-ggplot(nb_group, aes(y=`Number of students`, x = Group )) + geom_col() + theme(axis.text.x = element_text(angle=90))
+ggplot(nb_group, aes(y=`Number of students`, x = Group )) + geom_col(color = "black", fill = "white") + theme(axis.text.x = element_text(angle=90))
 
 ```
 
@@ -86,7 +87,7 @@ exam <- grades |>
 
 ggplot(exam, aes(y=Exam, x = Group )) + geom_violin()  + theme(axis.text.x = element_text(angle=90)) + labs(y = "Exam grades", title = "Distribution of the exam grades by group")
 
-ggplot(exam, aes(y=Exam, x = Group )) + geom_boxplot()  + theme(axis.text.x = element_text(angle=90)) + labs(y = "Exam grades", title = "Distribution of the exam grades by group")
+ggplot(exam, aes(y=Exam, x = Group)) + geom_boxplot()  + theme(axis.text.x = element_text(angle=90)) + labs(y = "Exam grades", title = "Distribution of the exam grades by group")
 
 ```
 
@@ -103,7 +104,7 @@ miss <- grades %>%
 
 ```{r}
 
-ggplot(miss, aes(y=`Students_Missed_Exam`, x = Group )) + geom_col() + theme(axis.text.x = element_text(angle=90))+ labs(y = "Number of students who missed the exam", title = "Number of students who missed the exam by group")
+ggplot(miss, aes(y=`Students_Missed_Exam`, x = Group )) + geom_col(color = "black", fill = "white") + theme(axis.text.x = element_text(angle=90))+ labs(y = "Number of students who missed the exam", title = "Number of students who missed the exam by group")
 
 ```
 ### Question 10
@@ -128,13 +129,92 @@ grades_NA <- grades_long %>%
 
 ```{r}
 ggplot(grades_NA, aes(x = NA_total)) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  geom_histogram(binwidth = 1, fill = "white", color = "black") +
   labs(
     title = "Distribution of missing grades per student",
     x = "Total Missing Grades",
     y = "Frequency"
-  ) +
-  theme_minimal()
+  )
 
 ```
+
+
+### Question 13
+
+```{r}
+
+groups <- data.frame(Group = unique(grades_long$Group))
+
+miss_long <- grades_long %>%
+  filter(type_exam == "Exam") %>%
+  group_by(Group) %>%
+  summarize(Students_Missed_Exam = sum(is.na(Score)))
+
+
+```
+
+### Question 14
+
+```{r}
+
+miss_online <- grades_long %>%
+  filter(str_starts(type_exam, "Online")) %>%
+  group_by(Id) %>%
+  summarize(Total_Missing_Online_Test_Grades = sum(is.na(Score)))
+
+```
+
+### Question 15
+
+```{r}
+
+grades_and_nb_online_miss <- grades %>%
+  left_join(miss_online, by = "Id")
+
+ggplot(grades_and_nb_online_miss, aes(x = Exam, fill = factor(Total_Missing_Online_Test_Grades))) +
+  geom_histogram(binwidth = 5, color = "black") +
+  labs(title = "Distribution of exam grades Conditioned by the number of missing grades for the online
+  tests",x = "Exam Grades", y = "Frequency") +
+  facet_wrap(~factor(Total_Missing_Online_Test_Grades), ncol = 2) +
+  scale_fill_discrete(name = "Number of missing grades for the online tests")
+
+```
+### Question 16
+
+```{r}
+
+any_MCQ_miss <- grades %>%
+  select(Id, starts_with("MCQ")) %>%
+  rowwise() %>%
+  mutate(Missed = any(is.na(c_across(starts_with("MCQ"))))) %>%
+  select(Id, Missed)
+
+```
+
+### Question 17
+
+```{r}
+
+any_MCQ_miss_group <- any_MCQ_miss %>%
+  inner_join(grades %>% select(Id, Group), by = "Id") %>%
+  group_by(Group) %>%
+  summarize(P_missed = mean(Missed))
+
+```
+
+### Question 18
+
+```{r}
+exam_per_group <- grades %>%
+  group_by(Group) %>%
+  summarize(AvgGrade = mean(Exam, na.rm = TRUE))
+
+merged_table <- inner_join(any_MCQ_miss_group, exam_per_group, by = "Group")
+
+
+ggplot(merged_table, aes(x = P_missed, y = AvgGrade, label = Group)) +
+  geom_point() + 
+  labs(x = "Percentage of students that missed at least one MCQ per group", y = "Average exam grade per group")
+```
+
 
